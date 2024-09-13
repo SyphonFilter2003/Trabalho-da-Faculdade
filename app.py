@@ -94,7 +94,7 @@ def login():
     
     user = User.query.filter_by(username=username).first()
     if user and check_password(password, user.password):
-        access_token = create_access_token(identity=username)
+        access_token = create_access_token(identity=user.id)
         return jsonify(access_token=access_token), 200
     
     return jsonify({"message": "Invalid credentials"}), 401
@@ -102,9 +102,9 @@ def login():
 @app.route("/user/delete", methods=["DELETE"])
 @jwt_required()
 def delete_user():
-    username = get_jwt_identity()
+    id = get_jwt_identity()
 
-    user = User.query.filter_by(username=username).first()
+    user = User.query.filter_by(id=id).first()
     if not user:
         return jsonify({"message": "User not found"}), 404
 
@@ -119,8 +119,8 @@ def delete_user():
 @app.route("/user/update", methods=["PUT"]) 
 @jwt_required()
 def update_user():
-    username = get_jwt_identity()
-    user = User.query.filter_by(username=username).first()
+    id = get_jwt_identity()
+    user = User.query.filter_by(id=id).first()
     if not user:
         return jsonify({"message": "User not found"}), 404
     
@@ -145,6 +145,7 @@ class Task(db.Model):
     title = db.Column(db.String(80), nullable=False)
     description = db.Column(db.String(120), nullable=False)
     author = db.Column(db.String(120), nullable=False)
+    authorId = db.Column(db.String(120), nullable=False)
     createdAt = db.Column(DateTime, default=None, nullable=True)
 
 @app.route("/task/get-info", methods=["GET"])
@@ -161,14 +162,14 @@ def get_task():
         "createdAt": response.createdAt
     }), 200
     
-@app.route("/task/get-tasks-by-username", methods=["GET"])
-def get_tasks_by_username():
-    username = request.args.get("username")
+@app.route("/task/get-tasks-by-id", methods=["GET"])
+def get_tasks_by_userID():
+    id = request.args.get("id")
     
-    if not username:
+    if not id:
         return jsonify({"message": "User not authenticated"}), 401
 
-    tasks = Task.query.filter_by(author=username).all()
+    tasks = Task.query.filter_by(authorId=id).all()
    
     tasks_list = [{
         "id": task.id,
@@ -183,34 +184,41 @@ def get_tasks_by_username():
 @app.route('/task/create', methods=['POST'])
 @jwt_required()
 def create_task():
-    username = get_jwt_identity()
+    id = get_jwt_identity()
     data = request.json
     title = data.get('title')
     description = data.get('description')
     
-    user = User.query.filter_by(username=username).first()
+    user = User.query.filter_by(id=id).first()
     if not user:
         return jsonify({"message": "User not found"}), 404
     
     if not title or not description:
         return jsonify({'message': 'Missing title or description'}), 400
     
-    new_task = Task(id=str(uuid.uuid4()),title=title, description=description, author=username,  createdAt=datetime.utcnow())
+    new_task = Task(
+        id=str(uuid.uuid4()),
+        title=title,
+        description=description,
+        author=user.username,
+        authorId=user.id,  
+        createdAt=datetime.utcnow()
+    )
     
     try:
         db.session.add(new_task)
         db.session.commit()
         return jsonify({'message': 'Task created successfully'}), 201
     except Exception as e:
-        db.session.rollback() 
+        db.session.rollback()
         return jsonify({'message': 'An error occurred: ' + str(e)}), 500
 
 @app.route("/task/delete", methods=["DELETE"])
 @jwt_required()
 def delete_task():
-    username = get_jwt_identity()
+    userId = get_jwt_identity()
 
-    user = User.query.filter_by(username=username).first()
+    user = User.query.filter_by(id=userId).first()
     if not user:
         return jsonify({"message": "User not found"}), 404
 
@@ -220,7 +228,7 @@ def delete_task():
     if not task:
         return jsonify({"message": "Task not found"}), 404
 
-    if username != task.author:
+    if userId != task.authorId:
         return jsonify({"message": "You cannot delete others' task"}), 403
     try:
         db.session.delete(task)
@@ -233,8 +241,8 @@ def delete_task():
 @app.route("/task/update", methods=["PUT"]) 
 @jwt_required()
 def update_task():
-    username = get_jwt_identity()
-    user = User.query.filter_by(username=username).first()
+    userId = get_jwt_identity()
+    user = User.query.filter_by(id=userId).first()
     if not user:
         return jsonify({"message": "User not found"}), 404
     
@@ -252,7 +260,7 @@ def update_task():
     if new_description:
         task.description = new_description
     
-    if task.author != username:
+    if task.authorId != userId:
         return jsonify({"message": "You cannot update others' task"}), 401
     try:
         db.session.commit()

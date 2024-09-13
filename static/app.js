@@ -62,7 +62,7 @@ document.getElementById('taskForm')?.addEventListener('submit', function(e) {
 
 function loadTasks() {
     const token = localStorage.getItem('token');
-    fetch('/task/get-tasks-by-username?username=' + encodeURIComponent(getUsernameFromToken()), {
+    fetch('/task/get-tasks-by-id?id=' + encodeURIComponent(getUsernameFromToken()), {
         method: 'GET',
         headers: {
             'Authorization': `Bearer ${token}`
@@ -200,7 +200,7 @@ document.getElementById('deleteUserForm')?.addEventListener('submit', function(e
           document.getElementById('deleteMessage').innerText = data.message;
           if (data.message === 'User deleted successfully') {
               localStorage.removeItem('token');
-              window.location.href = '/login';
+              window.location.href = '/pages/login';
           }
       });
 });
