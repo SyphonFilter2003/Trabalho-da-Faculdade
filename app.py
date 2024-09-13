@@ -1,4 +1,4 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, render_template
 from flask_sqlalchemy import SQLAlchemy
 from utils.encrypt import hash_password
 from utils.checkPassword import check_password
@@ -16,6 +16,30 @@ app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('SQLALCHEMY_DATABASE_URI')
 db = SQLAlchemy(app)
 jwt = JWTManager(app)
+
+@app.route('/')
+def index():
+    return render_template('index.html')
+
+@app.route('/pages/register')
+def register():
+    return render_template('register.html')
+
+@app.route('/pages/login')
+def login_page():
+    return render_template('login.html')
+
+@app.route('/pages/tasks')
+def tasks():
+    return render_template('tasks.html')
+
+@app.route('/pages/user/update')
+def user_update_page():
+    return render_template('update_user.html')
+
+@app.route('/pages/user/delete')
+def user_delete_page():
+    return render_template('delete_user.html')
 
 class User(db.Model):
     id = db.Column(db.String(36), primary_key=True, nullable=False)
@@ -118,7 +142,7 @@ def update_user():
 
 class Task(db.Model):
     id = db.Column(db.String(36), primary_key=True, nullable=False)
-    title = db.Column(db.String(80), unique=True, nullable=False)
+    title = db.Column(db.String(80), nullable=False)
     description = db.Column(db.String(120), nullable=False)
     author = db.Column(db.String(120), nullable=False)
     createdAt = db.Column(DateTime, default=None, nullable=True)
@@ -136,6 +160,25 @@ def get_task():
         "description": response.description,
         "createdAt": response.createdAt
     }), 200
+    
+@app.route("/task/get-tasks-by-username", methods=["GET"])
+def get_tasks_by_username():
+    username = request.args.get("username")
+    
+    if not username:
+        return jsonify({"message": "User not authenticated"}), 401
+
+    tasks = Task.query.filter_by(author=username).all()
+   
+    tasks_list = [{
+        "id": task.id,
+        "title": task.title,
+        "description": task.description,
+        "createdAt": task.createdAt
+    } for task in tasks]
+
+    return jsonify(tasks_list), 200
+
 
 @app.route('/task/create', methods=['POST'])
 @jwt_required()
