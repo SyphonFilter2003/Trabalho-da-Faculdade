@@ -144,7 +144,6 @@ class Task(db.Model):
     id = db.Column(db.String(36), primary_key=True, nullable=False)
     title = db.Column(db.String(80), nullable=False)
     description = db.Column(db.String(120), nullable=False)
-    author = db.Column(db.String(120), nullable=False)
     authorId = db.Column(db.String(120), nullable=False)
     createdAt = db.Column(DateTime, default=None, nullable=True)
 
@@ -200,7 +199,6 @@ def create_task():
         id=str(uuid.uuid4()),
         title=title,
         description=description,
-        author=user.username,
         authorId=user.id,  
         createdAt=datetime.utcnow()
     )
